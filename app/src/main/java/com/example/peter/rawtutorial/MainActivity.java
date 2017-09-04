@@ -14,7 +14,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mediaPlayer = MediaPlayer.create(this, R.raw.hydrangea);
+        mediaPlayer = MediaPlayer.create(this, R.raw.sample);
 
         findViewById(R.id.play).setOnClickListener(this);
         findViewById(R.id.pause).setOnClickListener(this);
@@ -32,7 +32,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
             case R.id.stop:
                 mediaPlayer.stop();
-                mediaPlayer = MediaPlayer.create(view.getContext(),R.raw.hydrangea);
+                mediaPlayer = MediaPlayer.create(view.getContext(),R.raw.sample);
                 break;
         }
     }
