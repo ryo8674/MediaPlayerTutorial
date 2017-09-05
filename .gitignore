@@ -22,3 +22,5 @@ proguard/
 app/build/
 
 .idea/*.xml
+
+*.mp3
