@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">RAWTutorial</string>
+    <string name="app_name">MusicPlayer</string>
+    <string name="hydrangea">Hydrangea</string>
+    <string name="canon">canon</string>
 </resources>

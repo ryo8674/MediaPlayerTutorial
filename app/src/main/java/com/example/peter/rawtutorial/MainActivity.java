@@ -1,99 +1,185 @@
 package com.example.peter.rawtutorial;
 
-import android.app.ActivityManager;
 import android.media.MediaPlayer;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.support.annotation.IdRes;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
+import android.widget.RadioGroup;
+import android.widget.SeekBar;
 
-import java.util.List;
+/**
+ * 音楽の再生、停止、一時停止を行うクラス
+ */
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, SeekBar.OnSeekBarChangeListener, Runnable, MediaPlayer.OnCompletionListener, RadioGroup.OnCheckedChangeListener {
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
-
-    MediaPlayer mediaPlayer;
+    private MediaPlayer mediaPlayer;
+    private Button mBtnPlayPause;
+    private SeekBar mSeekBarPosition;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mediaPlayer = MediaPlayer.create(this, R.raw.sample);
+        initRadioGroup();
 
-        findViewById(R.id.play).setOnClickListener(this);
-        findViewById(R.id.pause).setOnClickListener(this);
-        findViewById(R.id.stop).setOnClickListener(this);
+        setClickListener();
 
-        ActivityManager activityManager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
-        ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
-        activityManager.getMemoryInfo(memoryInfo);
+        initSeekBar();
 
-        // システムの使用可能メモリ合計
-        Log.d("ActivityManager","memoryInfo availMem  :"+memoryInfo.availMem);
-        // 現在のlowMemoryフラグ true:メモリ不足状態
-        Log.d("ActivityManager","memoryInfo lowMemory :"+memoryInfo.lowMemory);
-        // 閾値
-        // 下回った際に、バックグラウンドサービスや、無関係なプロセスからkill
-        Log.d("ActivityManager","memoryInfo threshold :"+memoryInfo.threshold);
+        Thread thread = new Thread(this);
+        thread.start();
 
-        //エラー情報の取得
-        List<ActivityManager.ProcessErrorStateInfo> errorStateInfo = activityManager.getProcessesInErrorState();
+    }
 
-        if(errorStateInfo != null){
-            for (ActivityManager.ProcessErrorStateInfo error : errorStateInfo){
-
-                // エラー情報
-                // エラー状態
-                Log.d("ActivityManager","error.condition  :"+error.condition); //   CRASHED,NOT_RESPONDING,NO_ERROR
-                // エラーの説明文詳細
-                Log.d("ActivityManager","error.longMsg    :"+error.longMsg);
-                // エラーの説明文概要
-                Log.d("ActivityManager","error.shortMsg   :"+error.shortMsg);
-                // 親プロセスID, ない場合0
-                Log.d("ActivityManager","error.pid        :"+error.pid);
-                // エラー、クラッシュしたプロセス名
-                Log.d("ActivityManager","error.processName:"+error.processName);
-                // エラー発生時のスタックトレース
-                Log.d("ActivityManager","error.stackTrace :"+error.stackTrace);
-                // エラー情報のタグ
-                Log.d("ActivityManager","error.tag        :"+error.tag);
-                // このプロセスに割り当てられているカーネルUserId
-                Log.d("ActivityManager","error.uid        :"+error.uid);
-            }
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Log.v("MediaPlayer", "onDestroy");
+        if (mediaPlayer.isPlaying()) {
+            mediaPlayer.stop();
         }
+        mediaPlayer.release();
+    }
 
+    /**
+     * RadioGroup初期化
+     */
+    private void initRadioGroup() {
+        RadioGroup mRadioGroup = (RadioGroup) findViewById(R.id.music_group);
+        mRadioGroup.check(R.id.music_1);
+        mediaPlayer = MediaPlayer.create(this, R.raw.hydrangea);
+        mRadioGroup.setOnCheckedChangeListener(this);
+    }
 
-        //起動中のタスク情報
-        // <uses-permission android:name="android.permission.GET_TASKS" /> パーミッションが必要
-        List<ActivityManager.RunningTaskInfo> taskInfo = activityManager.getRunningTasks(5);//直近5つを取得
+    /**
+     * クリックリスナーをセットするメソッド
+     */
+    private void setClickListener() {
+        //PLAY・PAUSEボタン
+        mBtnPlayPause = (Button) findViewById(R.id.play_pause);
+        mBtnPlayPause.setOnClickListener(this);
+        //STOPボタン
+        Button mButtonStop = (Button) findViewById(R.id.stop);
+        mButtonStop.setOnClickListener(this);
+    }
 
-        if(taskInfo != null){
-            for (ActivityManager.RunningTaskInfo task : taskInfo){
-
-                //エラー情報
-                // ユニークなtaskId
-                Log.d("ActivityManager","task.id           :"+task.id);
-                // 現在の状態の概要
-                Log.d("ActivityManager","task.description  :"+task.description);
-                // タスクのactivity数
-                Log.d("ActivityManager","task.numActivities:"+task.numActivities);
-                // running状態のActivity数
-                Log.d("ActivityManager","task.numRunning   :"+task.numRunning);
-            }
-        }}
+    /**
+     * SeekBar初期化
+     */
+    private void initSeekBar() {
+        mSeekBarPosition = (SeekBar) findViewById(R.id.seek);
+        mSeekBarPosition.setProgress(0);
+        mSeekBarPosition.setOnSeekBarChangeListener(this);
+    }
 
     @Override
     public void onClick(View view) {
         switch (view.getId()) {
-            case R.id.play:
-                mediaPlayer.start();
+            //PLAY・PAUSEボタン押下時
+            case R.id.play_pause:
+                mediaPlayPause();
                 break;
-            case R.id.pause:
-                mediaPlayer.pause();
-                break;
+            //STOPボタン押下時
             case R.id.stop:
-                mediaPlayer.stop();
-                mediaPlayer = MediaPlayer.create(view.getContext(),R.raw.sample);
+                mediaStop();
+                break;
+        }
+    }
+
+    @Override
+    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+        if (fromUser) {
+            mediaPlayer.pause();
+            mBtnPlayPause.setBackgroundResource(android.R.drawable.ic_media_play);
+            mediaPlayer.seekTo(progress);
+            mSeekBarPosition.setProgress(progress);
+        }
+    }
+
+    @Override
+    public void onStartTrackingTouch(SeekBar seekBar) {
+    }
+
+    @Override
+    public void onStopTrackingTouch(SeekBar seekBar) {
+    }
+
+    @Override
+    public void run() {
+        try {
+            while (mediaPlayer != null) {                                   //メディアプレーヤーが起動中の場合
+                mediaPlayer.setOnCompletionListener(this);
+                int currentPosition = mediaPlayer.getCurrentPosition();    //現在の再生位置を取得
+                Message msg = new Message();
+                msg.what = currentPosition;
+                threadHandler.sendMessage(msg);                    //ハンドラへのメッセージ送信
+            }
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private final Handler threadHandler = new Handler() {
+        public void handleMessage(Message msg) {
+            mSeekBarPosition.setProgress(msg.what);
+        }
+    };
+
+    @Override
+    public void onCompletion(MediaPlayer mediaPlayer) {
+        Log.v("MediaPlayer", "Stop!!!");
+        // 音声終了時、ボタンの画像を再生の画像に戻す。
+        mBtnPlayPause.setBackgroundResource(android.R.drawable.ic_media_play);
+    }
+
+    /**
+     * プレーヤーの再生・一時停止を行うメソッド
+     */
+    private void mediaPlayPause() {
+        if (mediaPlayer.isPlaying()) {                          //PLAY中の場合
+            mediaPlayer.pause();                                //PAUSE
+            mBtnPlayPause.setBackgroundResource(android.R.drawable.ic_media_play);
+
+        } else {                                            //PAUSE中の場合
+            mediaPlayer.start();                                //再生スタート
+            int mTotalTime = mediaPlayer.getDuration();
+            mSeekBarPosition.setMax(mTotalTime);            //SeekBarの最大値を設定
+            mBtnPlayPause.setBackgroundResource(android.R.drawable.ic_media_pause);   //ボタンのテキストを[Pause]へ変更
+        }
+    }
+
+    /**
+     * プレーヤーを停止するメソッド
+     */
+    private void mediaStop() {
+        mediaPlayer.stop();
+        try {
+            mediaPlayer.prepare();                          //プレーヤー準備
+        } catch (Exception e) {
+            e.printStackTrace();
+            return;
+        }
+        mediaPlayer.seekTo(0);                              //0にして先頭に戻す
+        mBtnPlayPause.setBackgroundResource(android.R.drawable.ic_media_play);
+    }
+
+    @Override
+    public void onCheckedChanged(RadioGroup radioGroup, @IdRes int checkedId) {
+        mediaStop();
+        switch (checkedId) {
+            case R.id.music_1:
+                mediaPlayer = MediaPlayer.create(this, R.raw.hydrangea);
+                break;
+            case R.id.music_2:
+                mediaPlayer = MediaPlayer.create(this, R.raw.canon);
                 break;
         }
     }

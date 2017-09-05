@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="button_height">64dp</dimen>
+    <dimen name="button_width">64dp</dimen>
+    <dimen name="seek_margin">24dp</dimen>
+    <dimen name="text_size">16sp</dimen>
+</resources>
